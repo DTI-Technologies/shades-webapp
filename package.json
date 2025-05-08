@@ -1,0 +1,39 @@
+{
+  "name": "shades-web-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "deploy": "./deploy.sh"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "cheerio": "^1.0.0-rc.12",
+    "next": "latest",
+    "next-auth": "^5.0.0-beta.27",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "typescript": "latest"
+  },
+  "description": "AI-powered web application that creates stylized webpage themes and rebrands websites",
+  "keywords": [
+    "theme",
+    "generator",
+    "web",
+    "styling",
+    "rebrand"
+  ],
+  "author": "DTI Technologies",
+  "license": "MIT"
+}
