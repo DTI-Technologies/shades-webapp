@@ -19,6 +19,7 @@ export default function WebsiteRebranderPage() {
   const [scrapedContent, setScrapedContent] = useState<ScrapedContent | null>(null);
   const [originalBrand, setOriginalBrand] = useState<BrandElements | null>(null);
   const [savedWebsiteId, setSavedWebsiteId] = useState<string | null>(null);
+  const [useProxy, setUseProxy] = useState(false);
   const [newBrand, setNewBrand] = useState<BrandElements>({
     name: '',
     colors: {
@@ -56,7 +57,7 @@ export default function WebsiteRebranderPage() {
       }
 
       const scraper = new WebsiteScraper();
-      const content = await scraper.scrapeWebsite(url);
+      const content = await scraper.scrapeWebsite(url, useProxy);
 
       if (!content) {
         throw new Error('Failed to scrape website content');
@@ -262,6 +263,18 @@ export default function WebsiteRebranderPage() {
                 required
                 className="input-field"
               />
+            </div>
+            <div className="mb-4 flex items-center">
+              <input
+                type="checkbox"
+                id="useProxy"
+                checked={useProxy}
+                onChange={(e) => setUseProxy(e.target.checked)}
+                className="mr-2"
+              />
+              <label htmlFor="useProxy" className="text-gray-700">
+                Use proxy (try this if you have trouble scraping certain websites)
+              </label>
             </div>
             <button
               type="submit"

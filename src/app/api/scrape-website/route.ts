@@ -4,6 +4,8 @@ import * as cheerio from 'cheerio';
 import { isAuthenticated, getCurrentUserId } from '@/lib/auth';
 import dbConnect from '@/lib/mongoose';
 import { Website } from '@/models';
+import { Logger } from '@/lib/logger';
+import { ProxyService } from '@/services/ai/scraper/proxyService';
 
 // This ensures the API route is not statically generated
 export const dynamic = 'force-dynamic';
@@ -84,9 +86,13 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+    const logger = new Logger('scrape-website');
+    const proxyService = new ProxyService();
+
     try {
         const { searchParams } = new URL(request.url);
         const url = searchParams.get('url');
+        const useProxy = searchParams.get('useProxy') === 'true';
 
         if (!url) {
             return NextResponse.json(
@@ -95,9 +101,68 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Fetch the website content
-        const response = await axios.get(url);
-        const html = response.data;
+        logger.info(`Attempting to scrape website: ${url}${useProxy ? ' using proxy' : ''}`);
+
+        let html: string;
+
+        // If proxy is explicitly requested, use it directly
+        if (useProxy) {
+            try {
+                html = await proxyService.fetchViaProxy(url);
+                logger.info(`Successfully fetched website content via proxy from: ${url}`);
+            } catch (proxyError) {
+                logger.error('Proxy fetch failed:', {
+                    error: proxyError instanceof Error ? proxyError.message : String(proxyError),
+                    url
+                });
+                return NextResponse.json(
+                    { error: `Failed to fetch via proxy: ${proxyError instanceof Error ? proxyError.message : String(proxyError)}` },
+                    { status: 502 }
+                );
+            }
+        } else {
+            // Try direct fetch first
+            try {
+                // Configure axios with timeout and headers to mimic a browser
+                const response = await axios.get(url, {
+                    timeout: 15000, // 15 seconds timeout
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.5',
+                        'Referer': 'https://www.google.com/',
+                        'DNT': '1',
+                        'Connection': 'keep-alive',
+                        'Upgrade-Insecure-Requests': '1',
+                        'Cache-Control': 'max-age=0'
+                    },
+                    maxRedirects: 5
+                });
+
+                logger.info(`Successfully fetched website content directly from: ${url}`);
+                html = response.data;
+            } catch (directError) {
+                logger.warn('Direct fetch failed, trying proxy as fallback:', {
+                    error: directError instanceof Error ? directError.message : String(directError),
+                    url
+                });
+
+                // If direct fetch fails, try via proxy as fallback
+                try {
+                    html = await proxyService.fetchViaProxy(url);
+                    logger.info(`Successfully fetched website content via proxy fallback from: ${url}`);
+                } catch (proxyError) {
+                    logger.error('Both direct and proxy fetch failed:', {
+                        directError: directError instanceof Error ? directError.message : String(directError),
+                        proxyError: proxyError instanceof Error ? proxyError.message : String(proxyError),
+                        url
+                    });
+
+                    // Re-throw the original error to be handled by the catch block
+                    throw directError;
+                }
+            }
+        }
 
         // Parse the HTML
         const $ = cheerio.load(html);
@@ -170,7 +235,41 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(scrapedContent);
     } catch (error) {
-        console.error('Error scraping website:', error);
+        logger.error('Error scraping website:', {
+            error: error instanceof Error ? error.message : String(error),
+            url: new URL(request.url).searchParams.get('url'),
+            stack: error instanceof Error ? error.stack : undefined
+        });
+
+        // Provide more specific error messages based on the type of error
+        if (axios.isAxiosError(error)) {
+            if (error.code === 'ECONNABORTED') {
+                return NextResponse.json(
+                    { error: 'Request timed out. The website might be too slow to respond.' },
+                    { status: 504 }
+                );
+            }
+
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                // that falls out of the range of 2xx
+                return NextResponse.json(
+                    {
+                        error: `Website returned an error: ${error.response.status} ${error.response.statusText}`,
+                        details: error.response.data
+                    },
+                    { status: error.response.status }
+                );
+            } else if (error.request) {
+                // The request was made but no response was received
+                return NextResponse.json(
+                    { error: 'No response received from the website. It might be down or blocking our requests.' },
+                    { status: 502 }
+                );
+            }
+        }
+
+        // Generic error response for other types of errors
         return NextResponse.json(
             { error: `Failed to scrape website: ${error instanceof Error ? error.message : String(error)}` },
             { status: 500 }
