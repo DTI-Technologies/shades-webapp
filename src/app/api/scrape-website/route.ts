@@ -90,6 +90,9 @@ export async function GET(request: NextRequest) {
     const proxyService = new ProxyService();
 
     try {
+        // Skip authentication for GET requests - we're just scraping public websites
+        // This avoids authentication issues when testing the scraper
+
         const { searchParams } = new URL(request.url);
         const url = searchParams.get('url');
         const useProxy = searchParams.get('useProxy') === 'true';
