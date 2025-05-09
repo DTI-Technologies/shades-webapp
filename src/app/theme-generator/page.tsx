@@ -1,5 +1,9 @@
 'use client';
 
+// This ensures the page is rendered on the client side
+// and not pre-rendered during build time
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { GeneratedTheme } from '@/services/ai/generator/themeGenerator';
@@ -17,6 +21,12 @@ export default function ThemeGeneratorPage() {
     // Fetch available theme types
     const fetchThemeTypes = async () => {
       try {
+        // Skip API calls during server-side rendering
+        if (typeof window === 'undefined') {
+          console.log('Skipping API calls during SSR');
+          return;
+        }
+
         const response = await axios.get('/api/generate-theme?action=getThemeTypes');
         setThemeTypes(response.data.themeTypes);
         if (response.data.themeTypes.length > 0) {
@@ -33,7 +43,7 @@ export default function ThemeGeneratorPage() {
 
   useEffect(() => {
     // Fetch theme preview when theme type changes
-    if (selectedThemeType) {
+    if (selectedThemeType && typeof window !== 'undefined') {
       fetchThemePreview(selectedThemeType);
     }
   }, [selectedThemeType]);

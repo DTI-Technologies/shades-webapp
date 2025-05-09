@@ -1,6 +1,7 @@
 import { DesignTrendAnalyzer } from '../trends/designTrendAnalyzer';
 import { LanguageStyleGenerator } from './languageStyleGenerator';
 import { PageTypeGenerator } from './pageTypeGenerator';
+import { OpenAIService } from '../openai/openaiService';
 
 export interface GeneratedTheme {
     name: string;
@@ -32,11 +33,13 @@ export class ThemeGenerator {
     private trendAnalyzer: DesignTrendAnalyzer;
     private languageStyleGenerator: LanguageStyleGenerator;
     private pageTypeGenerator: PageTypeGenerator;
+    private openAIService: OpenAIService;
 
     constructor() {
         this.trendAnalyzer = new DesignTrendAnalyzer();
         this.languageStyleGenerator = new LanguageStyleGenerator();
         this.pageTypeGenerator = new PageTypeGenerator();
+        this.openAIService = new OpenAIService();
     }
 
     public async generateTheme(themeType: string, projectType: string = 'web'): Promise<GeneratedTheme> {
@@ -218,11 +221,129 @@ export class ThemeGenerator {
     public getThemePreview(themeType: string): any {
         const colorPalette = this.generateColorPalette(themeType);
         const typography = this.generateTypography(themeType);
-        
+
         return {
             colorPalette,
             typography,
             components: this.generateComponents(themeType, colorPalette, typography)
         };
+    }
+
+    /**
+     * Generate a theme using AI with advanced customization
+     * @param themeType The type of theme to generate
+     * @param projectType The type of project
+     * @param customOptions Custom options for theme generation
+     * @returns The generated theme
+     */
+    public async generateAITheme(
+        themeType: string,
+        projectType: string = 'web',
+        customOptions: {
+            colorPalette?: Partial<GeneratedTheme['colorPalette']>;
+            typography?: Partial<GeneratedTheme['typography']>;
+            components?: Partial<Record<string, any>>;
+            description?: string;
+        } = {}
+    ): Promise<GeneratedTheme> {
+        try {
+            // Get current design trends
+            const trendFeatures = await this.trendAnalyzer.getDesignTrendFeatures(themeType);
+
+            // Create a prompt for OpenAI
+            const prompt = `
+                Generate a detailed theme for a ${projectType} project with a "${themeType}" style.
+                ${customOptions.description ? `The theme should: ${customOptions.description}` : ''}
+
+                Current design trends for this style include:
+                - Color Palette: ${trendFeatures.colorPalette.join(', ')}
+                - Typography: ${trendFeatures.typography.join(', ')}
+                - Components: ${trendFeatures.components.join(', ')}
+                - Animations: ${trendFeatures.animations.join(', ')}
+                - Layout: ${trendFeatures.layout.join(', ')}
+
+                ${customOptions.colorPalette ? `Use these specific colors where appropriate: ${JSON.stringify(customOptions.colorPalette)}` : ''}
+                ${customOptions.typography ? `Use these specific fonts where appropriate: ${JSON.stringify(customOptions.typography)}` : ''}
+                ${customOptions.components ? `Include these specific component styles: ${JSON.stringify(customOptions.components)}` : ''}
+
+                Generate a complete theme with color palette, typography, and component styles.
+            `;
+
+            // Define the schema for the AI response
+            const schema = {
+                name: { type: 'string', description: 'The name of the theme' },
+                type: { type: 'string', description: 'The type/style of the theme' },
+                description: { type: 'string', description: 'A brief description of the theme' },
+                colorPalette: {
+                    type: 'object',
+                    properties: {
+                        primary: { type: 'string', description: 'Primary color (hex)' },
+                        secondary: { type: 'string', description: 'Secondary color (hex)' },
+                        accent: { type: 'string', description: 'Accent color (hex)' },
+                        background: { type: 'string', description: 'Background color (hex)' },
+                        text: { type: 'string', description: 'Text color (hex)' }
+                    }
+                },
+                typography: {
+                    type: 'object',
+                    properties: {
+                        headingFont: { type: 'string', description: 'Font for headings' },
+                        bodyFont: { type: 'string', description: 'Font for body text' },
+                        codeFont: { type: 'string', description: 'Font for code' }
+                    }
+                },
+                components: { type: 'object', description: 'Component styles' }
+            };
+
+            // Generate the theme using OpenAI
+            const aiGeneratedTheme = await this.openAIService.generateStructuredData<Partial<GeneratedTheme>>(
+                prompt,
+                schema,
+                { temperature: 0.8 }
+            );
+
+            // Merge AI-generated theme with base theme and custom options
+            const baseColorPalette = this.generateColorPalette(themeType);
+            const baseTypography = this.generateTypography(themeType);
+
+            const colorPalette = {
+                ...baseColorPalette,
+                ...aiGeneratedTheme.colorPalette,
+                ...customOptions.colorPalette
+            };
+
+            const typography = {
+                ...baseTypography,
+                ...aiGeneratedTheme.typography,
+                ...customOptions.typography
+            };
+
+            // Generate language-specific styles
+            const languageStyles = await this.languageStyleGenerator.generateStyles(themeType, colorPalette);
+
+            // Generate page type layouts
+            const pageLayouts = await this.pageTypeGenerator.generateLayouts(themeType, colorPalette, typography);
+
+            // Combine everything into a theme
+            const theme: GeneratedTheme = {
+                name: aiGeneratedTheme.name || `Shades ${themeType}`,
+                type: themeType,
+                colorPalette,
+                typography,
+                components: {
+                    ...this.generateComponents(themeType, colorPalette, typography),
+                    ...aiGeneratedTheme.components,
+                    ...customOptions.components
+                },
+                styles: languageStyles,
+                pageLayouts
+            };
+
+            return theme;
+        } catch (error) {
+            console.error('Error generating AI theme:', error);
+            // Fall back to standard theme generation if AI fails
+            return this.generateTheme(themeType, projectType);
+        }
     }
 }

@@ -1,5 +1,9 @@
 'use client';
 
+// This ensures the page is rendered on the client side
+// and not pre-rendered during build time
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 import { WebsiteScraper, ScrapedContent } from '@/services/ai/scraper/websiteScraper';
 import { BrandAnalyzer, BrandElements } from '@/services/ai/analyzer/brandAnalyzer';
@@ -36,16 +40,37 @@ export default function WebsiteRebranderPage() {
     setError('');
 
     try {
+      // Skip actual API calls during build
+      if (typeof window === 'undefined') {
+        console.log('Skipping API calls during build');
+        return;
+      }
+
+      // Validate URL
+      if (!url || !url.startsWith('http')) {
+        throw new Error('Please enter a valid URL starting with http:// or https://');
+      }
+
       const scraper = new WebsiteScraper();
       const content = await scraper.scrapeWebsite(url);
+
+      if (!content) {
+        throw new Error('Failed to scrape website content');
+      }
+
       setScrapedContent(content);
 
       const analyzer = new BrandAnalyzer();
       const brand = await analyzer.analyzeBrand(content);
-      setOriginalBrand(brand);
 
+      if (!brand) {
+        throw new Error('Failed to analyze brand elements');
+      }
+
+      setOriginalBrand(brand);
       setStep(2);
     } catch (err) {
+      console.error('Error in website scraping:', err);
       setError(`Error scraping website: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setIsLoading(false);
@@ -58,16 +83,32 @@ export default function WebsiteRebranderPage() {
     setError('');
 
     try {
+      // Skip actual API calls during build
+      if (typeof window === 'undefined') {
+        console.log('Skipping API calls during build');
+        return;
+      }
+
       if (!scrapedContent || !originalBrand) {
         throw new Error('Website content not available. Please scrape a website first.');
       }
 
+      // Validate new brand data
+      if (!newBrand.name || !newBrand.colors.primary || !newBrand.typography.primary) {
+        throw new Error('Please fill in all required brand information.');
+      }
+
       const rebrander = new WebsiteRebrander();
       const content = await rebrander.rebrandWebsite(scrapedContent, originalBrand, newBrand);
-      setRebrandedContent(content);
 
+      if (!content) {
+        throw new Error('Failed to rebrand website content');
+      }
+
+      setRebrandedContent(content);
       setStep(3);
     } catch (err) {
+      console.error('Error in website rebranding:', err);
       setError(`Error rebranding website: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setIsLoading(false);
@@ -76,16 +117,24 @@ export default function WebsiteRebranderPage() {
 
   const handleBrandChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
+
     if (name.includes('.')) {
       const [section, property] = name.split('.');
-      setNewBrand(prev => ({
-        ...prev,
-        [section]: {
-          ...prev[section as keyof BrandElements],
-          [property]: value
+      setNewBrand(prev => {
+        // Create a new object with all properties from prev
+        const newBrand = { ...prev };
+
+        // Create a new section object if it doesn't exist
+        if (!newBrand[section as keyof BrandElements]) {
+          newBrand[section as keyof BrandElements] = {} as any;
         }
-      }));
+
+        // Update the property in the section
+        const sectionObj = newBrand[section as keyof BrandElements] as Record<string, string>;
+        sectionObj[property] = value;
+
+        return newBrand;
+      });
     } else {
       setNewBrand(prev => ({
         ...prev,
@@ -97,7 +146,7 @@ export default function WebsiteRebranderPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Website Rebrander</h1>
-      
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
@@ -134,7 +183,7 @@ export default function WebsiteRebranderPage() {
       {step === 2 && originalBrand && (
         <div className="card">
           <h2 className="text-xl font-bold mb-4">Step 2: Enter Your Brand Information</h2>
-          
+
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-2">Original Brand</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-md">
@@ -149,7 +198,7 @@ export default function WebsiteRebranderPage() {
               </div>
             </div>
           </div>
-          
+
           <form onSubmit={handleRebrandWebsite}>
             <div className="mb-4">
               <label htmlFor="name" className="block text-gray-700 mb-2">Brand Name</label>
@@ -164,7 +213,7 @@ export default function WebsiteRebranderPage() {
                 className="input-field"
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <label htmlFor="colors.primary" className="block text-gray-700 mb-2">Primary Color</label>
@@ -186,7 +235,7 @@ export default function WebsiteRebranderPage() {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label htmlFor="colors.secondary" className="block text-gray-700 mb-2">Secondary Color</label>
                 <div className="flex">
@@ -208,7 +257,7 @@ export default function WebsiteRebranderPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="mb-4">
               <label htmlFor="typography.primary" className="block text-gray-700 mb-2">Brand Font</label>
               <select
@@ -236,7 +285,7 @@ export default function WebsiteRebranderPage() {
                 <option value="System-ui, sans-serif">System UI</option>
               </select>
             </div>
-            
+
             <button
               type="submit"
               disabled={isLoading}
@@ -251,7 +300,7 @@ export default function WebsiteRebranderPage() {
       {step === 3 && rebrandedContent && (
         <div className="card">
           <h2 className="text-xl font-bold mb-4">Step 3: Preview Rebranded Website</h2>
-          
+
           <div className="mb-4">
             <h3 className="text-lg font-semibold mb-2">Rebranding Summary</h3>
             <div className="bg-gray-50 p-4 rounded-md">
@@ -261,7 +310,7 @@ export default function WebsiteRebranderPage() {
               <p><strong>Logo Replaced:</strong> {rebrandedContent.changes.logoReplaced ? 'Yes' : 'No'}</p>
             </div>
           </div>
-          
+
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-2">Preview</h3>
             <div className="border rounded-md overflow-hidden">
@@ -273,7 +322,7 @@ export default function WebsiteRebranderPage() {
               />
             </div>
           </div>
-          
+
           <div className="flex flex-wrap gap-4">
             <button
               onClick={() => {
@@ -291,7 +340,7 @@ export default function WebsiteRebranderPage() {
             >
               Download HTML
             </button>
-            
+
             <button
               onClick={() => {
                 const blob = new Blob([rebrandedContent.css], { type: 'text/css' });
@@ -308,7 +357,7 @@ export default function WebsiteRebranderPage() {
             >
               Download CSS
             </button>
-            
+
             <button
               onClick={() => setStep(1)}
               className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-all"

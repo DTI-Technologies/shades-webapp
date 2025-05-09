@@ -1,10 +1,21 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "buildCommand": "next build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
+  "outputDirectory": ".next",
   "regions": ["iad1"],
+  "env": {
+    "MONGODB_URI": "mongodb+srv://invent:u2II1eDc6PKzqoNo@cluster0.vqo1iqt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
+    "NEXTAUTH_URL": "${VERCEL_URL}",
+    "NEXTAUTH_SECRET": "your-nextauth-secret-key-should-be-set-in-vercel-dashboard"
+  },
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_SKIP_API_CALLS": "true"
+    }
+  },
   "headers": [
     {
       "source": "/api/(.*)",

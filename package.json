@@ -7,23 +7,39 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "deploy": "./deploy.sh"
+    "deploy": "./deploy.sh",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@auth/mongodb-adapter": "^2.6.0",
     "axios": "^1.9.0",
+    "bcryptjs": "^2.4.3",
     "cheerio": "^1.0.0-rc.12",
+    "mongodb": "^6.3.0",
+    "mongoose": "^8.0.3",
     "next": "latest",
     "next-auth": "^5.0.0-beta.27",
+    "openai": "^4.20.1",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "zod": "^3.24.4"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jest": "^29.5.11",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "autoprefixer": "^10.4.16",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
+    "ts-jest": "^29.1.1",
     "typescript": "latest"
   },
   "description": "AI-powered web application that creates stylized webpage themes and rebrands websites",
