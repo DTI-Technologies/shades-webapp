@@ -22,6 +22,7 @@ export interface ITheme extends Document {
   creator: mongoose.Types.ObjectId;
   isPublished: boolean;
   isPublic: boolean;
+  isFeatured: boolean;
   price: number;
   downloads: number;
   rating: number;
@@ -111,6 +112,10 @@ const ThemeSchema = new Schema<ITheme>(
       type: Boolean,
       default: false,
     },
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
     price: {
       type: Number,
       default: 0,
@@ -143,6 +148,7 @@ const ThemeSchema = new Schema<ITheme>(
 ThemeSchema.index({ name: 'text', description: 'text', tags: 'text' });
 ThemeSchema.index({ creator: 1 });
 ThemeSchema.index({ isPublished: 1, isPublic: 1 });
+ThemeSchema.index({ isFeatured: 1 });
 ThemeSchema.index({ downloads: -1 });
 ThemeSchema.index({ rating: -1 });
 

@@ -5,6 +5,7 @@ export interface IActivity extends Document {
   action: string;
   resourceType: 'theme' | 'website' | 'user' | 'system';
   resource?: mongoose.Types.ObjectId;
+  resourceName?: string;
   metadata?: Record<string, any>;
   createdAt: Date;
 }
@@ -45,6 +46,10 @@ const ActivitySchema = new Schema<IActivity>(
     resource: {
       type: Schema.Types.ObjectId,
       refPath: 'resourceType',
+    },
+    resourceName: {
+      type: String,
+      trim: true,
     },
     metadata: {
       type: Schema.Types.Mixed,

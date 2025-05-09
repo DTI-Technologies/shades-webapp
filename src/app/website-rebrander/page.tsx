@@ -5,16 +5,20 @@
 export const dynamic = 'force-dynamic';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { WebsiteScraper, ScrapedContent } from '@/services/ai/scraper/websiteScraper';
 import { BrandAnalyzer, BrandElements } from '@/services/ai/analyzer/brandAnalyzer';
 import { WebsiteRebrander, RebrandedContent } from '@/services/ai/rebrander/websiteRebrander';
+import Link from 'next/link';
 
 export default function WebsiteRebranderPage() {
+  const router = useRouter();
   const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [scrapedContent, setScrapedContent] = useState<ScrapedContent | null>(null);
   const [originalBrand, setOriginalBrand] = useState<BrandElements | null>(null);
+  const [savedWebsiteId, setSavedWebsiteId] = useState<string | null>(null);
   const [newBrand, setNewBrand] = useState<BrandElements>({
     name: '',
     colors: {
@@ -140,6 +144,96 @@ export default function WebsiteRebranderPage() {
         ...prev,
         [name]: value
       }));
+    }
+  };
+
+  const handleSaveWebsite = async () => {
+    if (!rebrandedContent) return;
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Skip actual API calls during build
+      if (typeof window === 'undefined') {
+        console.log('Skipping API calls during build');
+        return;
+      }
+
+      const response = await fetch('/api/rebrand-website', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newBrand.name,
+          url: url,
+          description: `Rebranded version of ${url}`,
+          originalBrand,
+          newBrand,
+          rebrandedContent: {
+            html: rebrandedContent.html,
+            css: [rebrandedContent.css],
+            images: rebrandedContent.images || [],
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to save website');
+      }
+
+      const data = await response.json();
+      setSavedWebsiteId(data.website._id);
+
+      // Log activity
+      await fetch('/api/analytics', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'create',
+          resourceType: 'website',
+          resourceId: data.website._id,
+          metadata: {
+            name: newBrand.name,
+            url,
+          },
+        }),
+      });
+
+      return data.website._id;
+    } catch (err) {
+      console.error('Error saving website:', err);
+      setError(`Error saving website: ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeployWebsite = async () => {
+    try {
+      setIsLoading(true);
+
+      // Save the website first if not already saved
+      let websiteId = savedWebsiteId;
+      if (!websiteId) {
+        websiteId = await handleSaveWebsite();
+        if (!websiteId) {
+          throw new Error('Failed to save website before deployment');
+        }
+      }
+
+      // Redirect to deployment page with the website ID
+      router.push(`/deployment?type=website&id=${websiteId}`);
+    } catch (err) {
+      console.error('Error preparing for deployment:', err);
+      setError(`Error preparing for deployment: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -363,6 +457,14 @@ export default function WebsiteRebranderPage() {
               className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-all"
             >
               Start Over
+            </button>
+
+            <button
+              onClick={handleDeployWebsite}
+              disabled={isLoading}
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-all"
+            >
+              {isLoading ? 'Preparing...' : 'Deploy Website'}
             </button>
           </div>
         </div>

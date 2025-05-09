@@ -186,6 +186,19 @@ export async function GET(request: NextRequest) {
           recentUsers
         }
       });
+    } else if (action === 'getDeploymentHistory') {
+      // Get user's deployment history
+      const deployments = await Activity.find({
+        user: userId,
+        action: 'deploy'
+      })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean();
+
+      return NextResponse.json({
+        deployments
+      });
     } else if (action === 'recommendations') {
       // Get personalized recommendations for the user
 
@@ -225,10 +238,33 @@ export async function GET(request: NextRequest) {
         .populate('creator', 'name image')
         .lean();
 
+      // Get featured themes
+      const featuredThemes = await Theme.find({
+        isPublished: true,
+        isPublic: true,
+        isFeatured: true
+      })
+        .sort({ rating: -1 })
+        .limit(5)
+        .populate('creator', 'name image')
+        .lean();
+
+      // Get newest themes
+      const newestThemes = await Theme.find({
+        isPublished: true,
+        isPublic: true
+      })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('creator', 'name image')
+        .lean();
+
       return NextResponse.json({
         recommendations: {
           recommendedThemes,
-          trendingThemes
+          trendingThemes,
+          featuredThemes,
+          newestThemes
         }
       });
     }

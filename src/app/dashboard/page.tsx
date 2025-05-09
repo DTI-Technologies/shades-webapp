@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import StatCard from '@/components/dashboard/StatCard';
+import Recommendations from '@/components/dashboard/Recommendations';
 import Link from 'next/link';
 
 interface UserStats {
@@ -21,6 +22,8 @@ interface UserStats {
 interface Recommendation {
   recommendedThemes: any[];
   trendingThemes: any[];
+  featuredThemes: any[];
+  newestThemes: any[];
 }
 
 export default function DashboardPage() {
@@ -114,43 +117,8 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Recommended Themes */}
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-          <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">Recommended Themes</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-              Themes you might be interested in based on your activity
-            </p>
-          </div>
-          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-            {recommendations?.recommendedThemes?.length ? (
-              recommendations.recommendedThemes.slice(0, 5).map((theme) => (
-                <li key={theme._id} className="px-4 py-4 sm:px-6 hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <Link href={`/dashboard/marketplace/theme/${theme._id}`} className="flex items-center">
-                    <div className="w-10 h-10 rounded flex-shrink-0" style={{ backgroundColor: theme.colorPalette.primary }}></div>
-                    <div className="ml-4 flex-1">
-                      <div className="flex justify-between">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{theme.name}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          ★ {theme.rating.toFixed(1)} ({theme.ratingCount})
-                        </p>
-                      </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{theme.description}</p>
-                    </div>
-                  </Link>
-                </li>
-              ))
-            ) : (
-              <li className="px-4 py-4 sm:px-6 text-center text-gray-500 dark:text-gray-400">
-                No recommendations available yet
-              </li>
-            )}
-          </ul>
-          <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 text-right sm:px-6">
-            <Link
-              href="/dashboard/marketplace"
-              className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              View All
-            </Link>
+          <div className="px-4 py-5 sm:px-6">
+            <Recommendations />
           </div>
         </div>
 

@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 
 import { useState, useEffect } from 'react';
 import ThemeCard from '@/components/marketplace/ThemeCard';
+import FeaturedThemes from '@/components/marketplace/FeaturedThemes';
 import Link from 'next/link';
 
 export default function MarketplacePage() {
@@ -180,16 +181,25 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : error ? (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <strong className="font-bold">Error!</strong>
-          <span className="block sm:inline"> {error}</span>
-        </div>
-      ) : themes.length === 0 ? (
+      {/* Featured Themes Section */}
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+        <FeaturedThemes />
+      </div>
+
+      {/* Search Results Section */}
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Search Results</h2>
+
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong className="font-bold">Error!</strong>
+            <span className="block sm:inline"> {error}</span>
+          </div>
+        ) : themes.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 text-center">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -318,6 +328,7 @@ export default function MarketplacePage() {
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

@@ -5,16 +5,19 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { GeneratedTheme } from '@/services/ai/generator/themeGenerator';
 
 export default function ThemeGeneratorPage() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [themeTypes, setThemeTypes] = useState<string[]>([]);
   const [selectedThemeType, setSelectedThemeType] = useState('');
   const [projectType, setProjectType] = useState('web');
   const [generatedTheme, setGeneratedTheme] = useState<GeneratedTheme | null>(null);
   const [themePreview, setThemePreview] = useState<any>(null);
+  const [savedThemeId, setSavedThemeId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -93,6 +96,87 @@ export default function ThemeGeneratorPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleSaveTheme = async () => {
+    if (!generatedTheme) return;
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Skip actual API calls during build
+      if (typeof window === 'undefined') {
+        console.log('Skipping API calls during build');
+        return;
+      }
+
+      const response = await axios.post('/api/generate-theme', {
+        action: 'saveTheme',
+        theme: {
+          name: generatedTheme.name,
+          type: generatedTheme.type,
+          description: `A ${generatedTheme.type} theme for ${projectType} projects`,
+          colorPalette: generatedTheme.colorPalette,
+          typography: generatedTheme.typography,
+          components: generatedTheme.components,
+          styles: generatedTheme.styles,
+          pageLayouts: generatedTheme.pageLayouts,
+          isPublished: false,
+          isPublic: false,
+          price: 0,
+          tags: [generatedTheme.type, projectType]
+        }
+      });
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to save theme');
+      }
+
+      setSavedThemeId(response.data.theme._id);
+
+      // Log activity
+      await axios.post('/api/analytics', {
+        action: 'create',
+        resourceType: 'theme',
+        resourceId: response.data.theme._id,
+        metadata: {
+          name: generatedTheme.name,
+          type: generatedTheme.type,
+        },
+      });
+
+      return response.data.theme._id;
+    } catch (err) {
+      console.error('Error saving theme:', err);
+      setError(`Error saving theme: ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeployTheme = async () => {
+    try {
+      setIsLoading(true);
+
+      // Save the theme first if not already saved
+      let themeId = savedThemeId;
+      if (!themeId) {
+        themeId = await handleSaveTheme();
+        if (!themeId) {
+          throw new Error('Failed to save theme before deployment');
+        }
+      }
+
+      // Redirect to deployment page with the theme ID
+      router.push(`/deployment?type=theme&id=${themeId}`);
+    } catch (err) {
+      console.error('Error preparing for deployment:', err);
+      setError(`Error preparing for deployment: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -267,12 +351,22 @@ export default function ThemeGeneratorPage() {
             </div>
           </div>
 
-          <button
-            onClick={handleDownloadTheme}
-            className="btn-primary"
-          >
-            Download Theme
-          </button>
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={handleDownloadTheme}
+              className="btn-primary"
+            >
+              Download Theme
+            </button>
+
+            <button
+              onClick={handleDeployTheme}
+              disabled={isLoading}
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-all"
+            >
+              {isLoading ? 'Preparing...' : 'Deploy Theme'}
+            </button>
+          </div>
         </div>
       )}
     </div>
